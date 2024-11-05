@@ -32,32 +32,33 @@
       function extractText(node) {
         node.childNodes.forEach(child => {
           if (child.nodeType === Node.TEXT_NODE && child.textContent.trim()) {
-            // Wrap stray text nodes in <p>
             filteredContent.push(`<p>${child.textContent.trim()}</p>`);
           } else if (child.nodeType === Node.ELEMENT_NODE) {
             if (child.tagName === "UL") {
-              // Clone the <ul> element, remove attributes, and process its <li> children
-              const cleanUl = child.cloneNode(false);
-              Array.from(cleanUl.attributes).forEach(attr => cleanUl.removeAttribute(attr.name));
-              cleanUl.innerHTML = "";  // Clear existing content to add cleaned <li> elements
-
-              // Process each <li> child to remove attributes and nested tags
+              const cleanUl = document.createElement("ul");
+              
               Array.from(child.children).forEach(li => {
                 if (li.tagName === "LI") {
-                  const cleanLi = document.createElement("li");
-                  cleanLi.textContent = li.textContent.trim(); // Keep only plain text
-                  cleanUl.appendChild(cleanLi);
+                  const textContent = li.textContent.trim();
+                  if (textContent) {  // Only add non-empty <li> elements
+                    const cleanLi = document.createElement("li");
+                    cleanLi.textContent = textContent;
+                    cleanUl.appendChild(cleanLi);
+                  }
                 }
               });
 
-              filteredContent.push(cleanUl.outerHTML);
+              if (cleanUl.children.length > 0) { // Only add non-empty <ul> elements
+                filteredContent.push(cleanUl.outerHTML);
+              }
             } else if (child.tagName === "P") {
-              // Remove attributes from <p> and add to filtered content
-              const cleanP = child.cloneNode(true);
-              Array.from(cleanP.attributes).forEach(attr => cleanP.removeAttribute(attr.name));
-              filteredContent.push(cleanP.outerHTML);
+              const textContent = child.textContent.trim();
+              if (textContent) {
+                const cleanP = document.createElement("p");
+                cleanP.textContent = textContent;
+                filteredContent.push(cleanP.outerHTML);
+              }
             } else {
-              // Recursively extract text from nested elements
               extractText(child);
             }
           }
@@ -65,7 +66,24 @@
       }
 
       extractText(doc.body);
-      document.getElementById("output").textContent = filteredContent.join("");
+
+      // Beautify output with indentation
+      const beautifiedHtml = beautifyHtml(filteredContent.join(""), 2);
+      document.getElementById("output").textContent = beautifiedHtml;
+    }
+
+    function beautifyHtml(html, indentSize = 2) {
+      let indent = 0;
+      return html
+        .replace(/>\s*</g, ">\n<")  // Add newline between tags
+        .split("\n")
+        .map(line => {
+          if (line.match(/^<\/\w/)) indent -= indentSize; // Decrease indent for closing tag
+          const formattedLine = " ".repeat(indent) + line;
+          if (line.match(/^<\w[^>]*[^\/]>$/)) indent += indentSize; // Increase indent for opening tag
+          return formattedLine;
+        })
+        .join("\n");
     }
 
     function copyToClipboard() {

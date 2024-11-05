@@ -28,24 +28,34 @@
       const doc = parser.parseFromString(htmlContent, "text/html");
       let filteredContent = [];
 
-      // Recursive function to extract text from desired tags, remove attributes, and wrap text nodes in <p>
+      // Recursive function to extract desired tags, remove attributes, and wrap stray text in <p>
       function extractText(node) {
         node.childNodes.forEach(child => {
           if (child.nodeType === Node.TEXT_NODE && child.textContent.trim()) {
-            // Wrap text nodes outside desired tags in <p>
+            // Wrap stray text nodes in <p>
             filteredContent.push(`<p>${child.textContent.trim()}</p>`);
           } else if (child.nodeType === Node.ELEMENT_NODE) {
-            if (["P", "UL", "LI"].includes(child.tagName)) {
-              // Remove all attributes from the element
-              const cleanElement = child.cloneNode(true);
-              Array.from(cleanElement.attributes).forEach(attr => cleanElement.removeAttribute(attr.name));
-              
-              // Recursively process child elements in case they contain nested <li>, <p>, or <ul>
-              Array.from(cleanElement.children).forEach(grandchild => {
-                extractText(grandchild);
+            if (child.tagName === "UL") {
+              // Clone the <ul> element, remove attributes, and process its <li> children
+              const cleanUl = child.cloneNode(false);
+              Array.from(cleanUl.attributes).forEach(attr => cleanUl.removeAttribute(attr.name));
+              cleanUl.innerHTML = "";  // Clear existing content to add cleaned <li> elements
+
+              // Process each <li> child to remove attributes and nested tags
+              Array.from(child.children).forEach(li => {
+                if (li.tagName === "LI") {
+                  const cleanLi = document.createElement("li");
+                  cleanLi.textContent = li.textContent.trim(); // Keep only plain text
+                  cleanUl.appendChild(cleanLi);
+                }
               });
 
-              filteredContent.push(cleanElement.outerHTML);
+              filteredContent.push(cleanUl.outerHTML);
+            } else if (child.tagName === "P") {
+              // Remove attributes from <p> and add to filtered content
+              const cleanP = child.cloneNode(true);
+              Array.from(cleanP.attributes).forEach(attr => cleanP.removeAttribute(attr.name));
+              filteredContent.push(cleanP.outerHTML);
             } else {
               // Recursively extract text from nested elements
               extractText(child);

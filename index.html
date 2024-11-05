@@ -8,6 +8,7 @@
     body { font-family: Arial, sans-serif; margin: 20px; }
     textarea, #output { width: 100%; margin-top: 10px; padding: 10px; font-size: 16px; }
     button { padding: 10px 15px; font-size: 16px; margin-top: 10px; cursor: pointer; }
+    #output { white-space: pre-wrap; border: 1px solid #ccc; min-height: 100px; background: #f9f9f9; }
   </style>
 </head>
 <body>
@@ -17,7 +18,7 @@
   <button onclick="processHTML()">Process</button>
 
   <h2>Output</h2>
-  <div id="output" contenteditable="true" style="border: 1px solid #ccc; min-height: 100px;"></div>
+  <pre id="output"></pre>
   <button onclick="copyToClipboard()">Copy to Clipboard</button>
 
   <script>
@@ -27,16 +28,26 @@
       const doc = parser.parseFromString(htmlContent, "text/html");
       let filteredContent = [];
 
+      // Recursive function to extract text from desired tags, remove attributes, and wrap text nodes in <p>
       function extractText(node) {
         node.childNodes.forEach(child => {
           if (child.nodeType === Node.TEXT_NODE && child.textContent.trim()) {
+            // Wrap text nodes outside desired tags in <p>
             filteredContent.push(`<p>${child.textContent.trim()}</p>`);
           } else if (child.nodeType === Node.ELEMENT_NODE) {
             if (["P", "UL", "LI"].includes(child.tagName)) {
+              // Remove all attributes from the element
               const cleanElement = child.cloneNode(true);
               Array.from(cleanElement.attributes).forEach(attr => cleanElement.removeAttribute(attr.name));
+              
+              // Recursively process child elements in case they contain nested <li>, <p>, or <ul>
+              Array.from(cleanElement.children).forEach(grandchild => {
+                extractText(grandchild);
+              });
+
               filteredContent.push(cleanElement.outerHTML);
             } else {
+              // Recursively extract text from nested elements
               extractText(child);
             }
           }
@@ -44,18 +55,14 @@
       }
 
       extractText(doc.body);
-      document.getElementById("output").innerHTML = filteredContent.join("");
+      document.getElementById("output").textContent = filteredContent.join("");
     }
 
     function copyToClipboard() {
       const outputDiv = document.getElementById("output");
-      const range = document.createRange();
-      range.selectNodeContents(outputDiv);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-      document.execCommand("copy");
-      alert("Copied to clipboard!");
+      navigator.clipboard.writeText(outputDiv.textContent)
+        .then(() => alert("Copied to clipboard!"))
+        .catch(err => alert("Failed to copy: ", err));
     }
   </script>
 

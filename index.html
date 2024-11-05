@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Cleaner</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    textarea, #output { width: 100%; margin-top: 10px; padding: 10px; font-size: 16px; }
+    button { padding: 10px 15px; font-size: 16px; margin-top: 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <h1>HTML Cleaner</h1>
+  <textarea id="input" rows="10" placeholder="Paste your HTML here..."></textarea>
+  <button onclick="processHTML()">Process</button>
+
+  <h2>Output</h2>
+  <div id="output" contenteditable="true" style="border: 1px solid #ccc; min-height: 100px;"></div>
+  <button onclick="copyToClipboard()">Copy to Clipboard</button>
+
+  <script>
+    function processHTML() {
+      const htmlContent = document.getElementById("input").value;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlContent, "text/html");
+      let filteredContent = [];
+
+      function extractText(node) {
+        node.childNodes.forEach(child => {
+          if (child.nodeType === Node.TEXT_NODE && child.textContent.trim()) {
+            filteredContent.push(`<p>${child.textContent.trim()}</p>`);
+          } else if (child.nodeType === Node.ELEMENT_NODE) {
+            if (["P", "UL", "LI"].includes(child.tagName)) {
+              const cleanElement = child.cloneNode(true);
+              Array.from(cleanElement.attributes).forEach(attr => cleanElement.removeAttribute(attr.name));
+              filteredContent.push(cleanElement.outerHTML);
+            } else {
+              extractText(child);
+            }
+          }
+        });
+      }
+
+      extractText(doc.body);
+      document.getElementById("output").innerHTML = filteredContent.join("");
+    }
+
+    function copyToClipboard() {
+      const outputDiv = document.getElementById("output");
+      const range = document.createRange();
+      range.selectNodeContents(outputDiv);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.execCommand("copy");
+      alert("Copied to clipboard!");
+    }
+  </script>
+
+</body>
+</html>
